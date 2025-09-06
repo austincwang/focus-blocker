@@ -6,17 +6,300 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="stylesheet" href="./popup.css" />
     <title>Focus Blocker</title>
+    <style>
+      body {
+        width: 350px;
+        padding: 15px;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      }
+      
+      .locked-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(255, 255, 255, 0.95);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+      }
+      
+      .locked-content {
+        text-align: center;
+        padding: 20px;
+      }
+      
+      .lock-icon {
+        font-size: 48px;
+        margin-bottom: 16px;
+      }
+      
+      .passcode-input {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-top: 20px;
+        align-items: center;
+      }
+      
+      .passcode-field {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+      
+      #passcode-entry {
+        padding: 8px 12px;
+        border: 2px solid #ddd;
+        border-radius: 6px;
+        font-size: 16px;
+        font-family: monospace;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        width: 120px;
+        text-align: center;
+      }
+      
+      #passcode-entry:focus {
+        outline: none;
+        border-color: #1a73e8;
+      }
+      
+      .btn {
+        padding: 8px 16px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+      }
+      
+      .btn-primary {
+        background: #1a73e8;
+        color: white;
+      }
+      
+      .btn-primary:hover {
+        background: #1557b0;
+      }
+      
+      .btn-secondary {
+        background: #f8f9fa;
+        color: #333;
+        border: 1px solid #dadce0;
+      }
+      
+      .btn-secondary:hover {
+        background: #f1f3f4;
+      }
+      
+      .btn-small {
+        padding: 6px 12px;
+        font-size: 12px;
+      }
+      
+      .section {
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 1px solid #eee;
+      }
+      
+      .section:last-child {
+        border-bottom: none;
+      }
+      
+      h2 {
+        font-size: 16px;
+        margin-bottom: 10px;
+        color: #333;
+      }
+      
+      h3 {
+        font-size: 14px;
+        margin-bottom: 8px;
+        color: #666;
+      }
+      
+      label {
+        display: block;
+        margin-bottom: 8px;
+        font-size: 14px;
+      }
+      
+      .custom-input-container {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 10px;
+      }
+      
+      #custom-site {
+        flex: 1;
+        padding: 6px 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 14px;
+      }
+      
+      #add-custom {
+        background: #4285f4;
+        color: white;
+        border: none;
+        padding: 6px 12px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+      }
+      
+      #add-custom:hover {
+        background: #3367d6;
+      }
+      
+      .custom-site-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: #f8f9fa;
+        padding: 6px 10px;
+        margin-bottom: 4px;
+        border-radius: 4px;
+        font-size: 13px;
+      }
+      
+      .remove-btn {
+        background: #ea4335;
+        color: white;
+        border: none;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        cursor: pointer;
+        font-size: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      
+      .remove-btn:hover {
+        background: #d33b2c;
+      }
+      
+      button[type="submit"] {
+        background: #34a853;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        width: 100%;
+      }
+      
+      button[type="submit"]:hover {
+        background: #2d8e47;
+      }
+      
+      #status {
+        margin-top: 10px;
+        color: #34a853;
+        font-size: 13px;
+        text-align: center;
+      }
+      
+      .status.error {
+        color: #ea4335;
+      }
+      
+      .tip {
+        background: #e8f4fd;
+        padding: 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        color: #1967d2;
+        margin-top: 8px;
+      }
+      
+      .settings-link {
+        text-align: center;
+        margin-top: 15px;
+        padding-top: 15px;
+        border-top: 1px solid #eee;
+      }
+      
+      .settings-link a {
+        color: #1a73e8;
+        text-decoration: none;
+        font-size: 12px;
+      }
+      
+      .settings-link a:hover {
+        text-decoration: underline;
+      }
+    </style>
   </head>
   <body>
-    <h2>Choose the websites to block:</h2>
-    <form id="block-form">
-      <label><input type="checkbox" value="youtube.com" /> Youtube</label><br>
-      <label><input type="checkbox" value="netflix.com" /> Netflix</label><br>
-      <label><input type="checkbox" value="discord.com" /> Discord</label><br>
-      <label><input type="checkbox" value="instagram.com" /> Instagram</label><br>
-      <button type="submit">Save</button>
-    </form>
-    <div id="status" style="margin-top: 10px; color: green;"></div>
+    <div id="locked-overlay" class="locked-overlay" style="display: none;">
+      <div class="locked-content">
+        <div class="lock-icon">🔒</div>
+        <h2>Enter Passcode to Modify Sites</h2>
+        <p style="color: #666; font-size: 14px; margin-bottom: 8px;">
+          Check your email for the passcode
+        </p>
+        <div class="passcode-input">
+          <div class="passcode-field">
+            <input type="text" id="passcode-entry" placeholder="XXXXXX" maxlength="6" />
+            <button class="btn btn-primary" id="verify-passcode">Unlock</button>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <button class="btn btn-secondary btn-small" id="request-passcode">Send New Code</button>
+            <button class="btn btn-secondary btn-small" id="cancel-unlock">Cancel</button>
+          </div>
+        </div>
+        <div id="passcode-status" style="margin-top: 12px; font-size: 13px;"></div>
+      </div>
+    </div>
+
+    <div id="main-content">
+      <div class="section">
+        <h2>Quick Block - Popular Sites</h2>
+        <form id="block-form">
+          <label><input type="checkbox" value="youtube.com" /> YouTube</label>
+          <label><input type="checkbox" value="netflix.com" /> Netflix</label>
+          <label><input type="checkbox" value="discord.com" /> Discord</label>
+          <label><input type="checkbox" value="instagram.com" /> Instagram</label>
+          <label><input type="checkbox" value="twitter.com" /> Twitter/X</label>
+          <label><input type="checkbox" value="reddit.com" /> Reddit</label>
+          <button type="submit">Save Popular Sites</button>
+        </form>
+      </div>
+
+      <div class="section">
+        <h3>Add Custom Site/Keyword</h3>
+        <div class="custom-input-container">
+          <input type="text" id="custom-site" placeholder="e.g., facebook, tiktok, news, etc." />
+          <button id="add-custom">Add</button>
+        </div>
+        <div class="tip">
+          💡 <strong>Tip:</strong> You can add:
+          <br>• Full domains: <em>facebook.com</em>
+          <br>• Keywords: <em>tiktok</em> (blocks any URL with "tiktok")
+          <br>• Subdomains: <em>m.youtube.com</em>
+        </div>
+      </div>
+
+      <div class="section">
+        <h3>Your Custom Blocks</h3>
+        <div id="custom-list"></div>
+      </div>
+
+      <div id="status"></div>
+
+      <div class="settings-link">
+        <a href="#" id="settings-link">⚙️ Setup Email Protection</a>
+      </div>
+    </div>
 
     <script src="./popup.js"></script>
   </body>

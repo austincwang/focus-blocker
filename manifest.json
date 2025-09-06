@@ -6,12 +6,17 @@
   
   "permissions": [
     "storage",
-    "declarativeNetRequest"
+    "declarativeNetRequest",
+    "tabs"
   ],
   
   "host_permissions": [
-    "<all_urls>"
+    "https://api.emailjs.com/*"
   ],
+
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  },
   
   "background": {
     "service_worker": "background.js"
@@ -22,10 +27,16 @@
     "default_title": "Focus Blocker"
   },
   
-  "web_accessible_resources": [
-    {
-      "resources": ["blocked.html"],
-      "matches": ["<all_urls>"]
-    }
-  ]
+  "web_accessible_resources": [{
+    "resources": ["blocked.html", "send-email.html"],
+    "matches": ["<all_urls>"]
+  }],
+
+  "declarative_net_request": {
+    "rule_resources": [{
+      "id": "ruleset_1",
+      "enabled": true,
+      "path": "rules.json"
+    }]
+  }
 }
