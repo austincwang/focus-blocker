@@ -9,4 +9,5 @@ To use unblocking protection with a passcode:
 - to email: {{to_email}}
 - subject: {{subject}}
 - body: {{message}}
+
 this allows your website blocking to be locked behind a passcode that will be sent to a desired email when prompted for
