@@ -7,11 +7,13 @@
   "permissions": [
     "storage",
     "declarativeNetRequest",
-    "tabs"
+    "tabs",
+    "declarativeNetRequestWithHostAccess"
   ],
   
   "host_permissions": [
-    "https://api.emailjs.com/*"
+    "https://api.emailjs.com/*", 
+    "<all_urls>"
   ],
 
   "content_security_policy": {
@@ -28,7 +30,7 @@
   },
   
   "web_accessible_resources": [{
-    "resources": ["blocked.html", "send-email.html"],
+    "resources": ["blocked.html"],
     "matches": ["<all_urls>"]
   }],
 

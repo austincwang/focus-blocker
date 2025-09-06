@@ -1,35 +1,232 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Blocked!</title>
+  <meta charset="utf-8">
+  <title>Site Blocked - Focus Blocker</title>
   <style>
     body {
-      font-family: sans-serif;
-      background: #fefefe;
-      color: #333;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+    }
+
+    .container {
       text-align: center;
-      padding: 50px;
-    }
-    .card {
-      background: #fff;
-      padding: 30px;
-      margin: auto;
       max-width: 500px;
-      border: 2px solid #ccc;
-      border-radius: 12px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      padding: 40px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 20px;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
     }
+
+    .icon {
+      font-size: 80px;
+      margin-bottom: 20px;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+    }
+
     h1 {
-      color: #d32f2f;
+      font-size: 32px;
+      margin-bottom: 15px;
+      font-weight: 600;
+    }
+
+    .subtitle {
+      font-size: 18px;
+      margin-bottom: 30px;
+      opacity: 0.9;
+      line-height: 1.4;
+    }
+
+    .blocked-url {
+      background: rgba(255, 255, 255, 0.2);
+      padding: 15px;
+      border-radius: 10px;
+      margin: 20px 0;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      word-break: break-all;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .motivational {
+      font-size: 16px;
+      font-style: italic;
+      margin: 30px 0;
+      opacity: 0.8;
+    }
+
+    .actions {
+      margin-top: 30px;
+    }
+
+    .btn {
+      display: inline-block;
+      padding: 12px 24px;
+      margin: 10px;
+      border: none;
+      border-radius: 25px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-decoration: none;
+    }
+
+    .btn-primary {
+      background: rgba(255, 255, 255, 0.9);
+      color: #333;
+    }
+
+    .btn-primary:hover {
+      background: white;
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    }
+
+    .btn-secondary {
+      background: transparent;
+      color: white;
+      border: 2px solid rgba(255, 255, 255, 0.5);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: white;
+    }
+
+    .stats {
+      margin-top: 40px;
+      padding: 20px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 15px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .stats h3 {
+      margin: 0 0 15px 0;
+      font-size: 16px;
+    }
+
+    .time-saved {
+      font-size: 24px;
+      font-weight: bold;
+      color: #4CAF50;
+    }
+
+    .footer {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 12px;
+      opacity: 0.7;
     }
   </style>
 </head>
 <body>
-  <div class="card">
-    <h1>Site Blocked!</h1>
-    <p>This site is on your blocklist.</p>
-    <p>Stay focused, you're doing great</p>
-    <p>Return to your task and keep up the good work!</p>
+  <div class="container">
+    <div class="icon">🚫</div>
+    <h1>Site Blocked</h1>
+    <p class="subtitle">This site is blocked to help you stay focused and productive.</p>
+    
+    <div class="blocked-url" id="blocked-url">
+      Loading...
+    </div>
+
+    <div class="motivational">
+      "The successful warrior is the average person with laser-like focus."
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" onclick="goBack()">Go Back</button>
+      <button class="btn btn-secondary" onclick="openFocusApp()">Open Focus Timer</button>
+    </div>
+
+    <div class="stats">
+      <h3>Your Progress Today</h3>
+      <div class="time-saved" id="time-saved">~5 minutes saved</div>
+      <p style="font-size: 12px; margin-top: 10px;">Every block helps you stay on track!</p>
+    </div>
   </div>
+
+  <div class="footer">
+    Focus Blocker Extension | Stay Productive
+  </div>
+
+  <script>
+    // Display the blocked URL
+    document.getElementById('blocked-url').textContent = window.location.href.includes('chrome-extension://') 
+      ? document.referrer || 'Unknown URL'
+      : window.location.href;
+
+    // Simple time tracking
+    function updateTimeSaved() {
+      const today = new Date().toDateString();
+      const storageKey = `blocked_count_${today}`;
+      
+      // Get today's block count
+      let blockCount = parseInt(localStorage.getItem(storageKey) || '0');
+      blockCount++;
+      localStorage.setItem(storageKey, blockCount.toString());
+      
+      // Estimate time saved (average 2-15 minutes per block)
+      const avgMinutes = Math.min(blockCount * 3, 60); // Cap at 1 hour display
+      document.getElementById('time-saved').textContent = 
+        avgMinutes < 60 ? `~${avgMinutes} minutes saved` : `~${Math.round(avgMinutes/60*10)/10} hours saved`;
+    }
+
+    function goBack() {
+      // Try to go back in history, or close the tab
+      if (window.history.length > 1) {
+        window.history.back();
+      } else {
+        // Open a new tab with a productive page
+        window.location.href = 'about:blank';
+      }
+    }
+
+    function openFocusApp() {
+      // You can customize this to open your favorite focus/productivity app
+      window.open('https://pomofocus.io/', '_blank');
+    }
+
+    // Update stats when page loads
+    updateTimeSaved();
+
+    // Add some dynamic motivational quotes
+    const quotes = [
+      "The successful warrior is the average person with laser-like focus.",
+      "Focus is not about doing more, it's about doing what matters.",
+      "Where focus goes, energy flows.",
+      "The art of being productive is the art of being selective.",
+      "Concentration is the secret of strength.",
+      "Focus on being productive instead of busy.",
+      "Single-tasking is the new multi-tasking."
+    ];
+
+    // Randomly select a quote
+    const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
+    document.querySelector('.motivational').textContent = `"${randomQuote}"`;
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape' || e.key === 'Backspace') {
+        goBack();
+      }
+    });
+  </script>
 </body>
 </html>

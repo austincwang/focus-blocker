@@ -1,53 +1,130 @@
-// Background script for Focus Blocker
+// Enhanced background.js with better debugging and error handling
 
-chrome.runtime.onInstalled.addListener(() => {
-  console.log('Focus Blocker installed');
-  // Initialize with empty blocking rules
-  updateBlockingRules([]);
+chrome.runtime.onInstalled.addListener(async () => {
+  console.log('🚀 Focus Blocker installed');
+  
+  // Initialize storage if needed
+  const data = await chrome.storage.sync.get(['blocked', 'customBlocked', 'blockingActive']);
+  if (!data.blocked) await chrome.storage.sync.set({ blocked: [] });
+  if (!data.customBlocked) await chrome.storage.sync.set({ customBlocked: [] });
+  if (data.blockingActive === undefined) await chrome.storage.sync.set({ blockingActive: false });
+  
+  console.log('📦 Initial storage:', data);
+  
+  // Initialize with current blocking state
+  loadAndUpdateRules();
 });
 
-// Listen for messages from popup
+chrome.runtime.onStartup.addListener(() => {
+  console.log('🔄 Focus Blocker startup');
+  loadAndUpdateRules();
+});
+
+// Enhanced message listener with better error handling
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  console.log('📨 Received message:', request);
+  
   if (request.action === "updateBlockedSites") {
-    updateBlockingRules(request.sites);
-    sendResponse({ success: true });
+    updateBlockingRules(request.sites)
+      .then(() => {
+        console.log('✅ Successfully updated blocking rules');
+        sendResponse({ success: true });
+      })
+      .catch((error) => {
+        console.error('❌ Failed to update blocking rules:', error);
+        sendResponse({ success: false, error: error.message });
+      });
+    return true; // Keep message channel open for async response
   }
   
   if (request.action === "requestPasscode") {
-    // Generate and send passcode
     generateAndSendPasscode()
       .then(() => {
         sendResponse({ success: true });
       })
       .catch((error) => {
-        console.error('Failed to send passcode:', error);
+        console.error('❌ Failed to send passcode:', error);
         sendResponse({ success: false, error: error.message });
       });
-    
-    return true; // Keep message channel open for async response
+    return true;
+  }
+  
+  // Debug action to check current state
+  if (request.action === "debugExtension") {
+    debugExtensionState()
+      .then((debugInfo) => {
+        sendResponse({ success: true, debugInfo });
+      })
+      .catch((error) => {
+        sendResponse({ success: false, error: error.message });
+      });
+    return true;
   }
 });
 
+// Enhanced loadAndUpdateRules with better logging
+async function loadAndUpdateRules() {
+  try {
+    console.log('🔄 Loading and updating rules...');
+    const data = await chrome.storage.sync.get(['blocked', 'customBlocked', 'blockingActive']);
+    const allSites = data.blockingActive ? 
+      [...(data.blocked || []), ...(data.customBlocked || [])] : [];
+    
+    console.log('📊 Current state:', {
+      blocked: data.blocked,
+      customBlocked: data.customBlocked,
+      blockingActive: data.blockingActive,
+      totalSites: allSites.length
+    });
+    
+    await updateBlockingRules(allSites);
+    console.log('✅ Rules loaded and updated successfully');
+  } catch (error) {
+    console.error('❌ Error loading and updating rules:', error);
+  }
+}
+
+// Enhanced updateBlockingRules with comprehensive logging
 async function updateBlockingRules(blockedSites) {
   try {
-    // First, get all existing rules and remove them
+    console.log('🔄 Updating blocking rules for sites:', blockedSites);
+
+    // Get all existing dynamic rules
     const existingRules = await chrome.declarativeNetRequest.getDynamicRules();
     const existingRuleIds = existingRules.map(rule => rule.id);
     
+    console.log(`📋 Found ${existingRules.length} existing rules`);
+    
+    // Remove all existing rules first
     if (existingRuleIds.length > 0) {
       await chrome.declarativeNetRequest.updateDynamicRules({
         removeRuleIds: existingRuleIds
       });
+      console.log(`🗑️  Removed ${existingRuleIds.length} existing rules`);
     }
 
-    // Generate new rules with fresh IDs
-    const newRules = [];
-    let ruleId = 1; // Start fresh each time
+    // If no sites to block, we're done
+    if (!blockedSites || blockedSites.length === 0) {
+      console.log('✅ No sites to block - all rules cleared');
+      return;
+    }
 
-    blockedSites.forEach((site) => {
+    // Generate new rules
+    const newRules = [];
+    let ruleId = 1;
+
+    for (const site of blockedSites) {
       const patterns = generateBlockingPatterns(site);
-      patterns.forEach(pattern => {
-        newRules.push({
+      console.log(`🎯 Site: "${site}" → Patterns:`, patterns);
+      
+      for (const pattern of patterns) {
+        // Skip if pattern is too generic to avoid blocking everything
+        if (pattern === '*://*/*' || pattern === '*') {
+          console.warn(`⚠️  Skipping overly generic pattern: ${pattern} for site: ${site}`);
+          continue;
+        }
+        
+        const rule = {
           id: ruleId++,
           priority: 1,
           action: {
@@ -60,87 +137,156 @@ async function updateBlockingRules(blockedSites) {
             urlFilter: pattern,
             resourceTypes: ["main_frame"]
           }
-        });
-      });
-    });
+        };
+        
+        newRules.push(rule);
+        console.log(`➕ Added rule ${rule.id}: ${pattern}`);
 
-    // Add new rules
+        // Chrome has a limit on dynamic rules
+        if (ruleId > 1000) {
+          console.warn('⚠️  Reached rule limit, stopping at 1000 rules');
+          break;
+        }
+      }
+    }
+
+    // Add new rules if any
     if (newRules.length > 0) {
       await chrome.declarativeNetRequest.updateDynamicRules({
         addRules: newRules
       });
+      console.log(`✅ Successfully added ${newRules.length} blocking rules for ${blockedSites.length} sites`);
+    } else {
+      console.warn('⚠️  No valid rules generated');
     }
 
-    console.log(`Updated blocking rules: ${newRules.length} rules for ${blockedSites.length} sites`);
+    // Verify the rules were added
+    const finalRules = await chrome.declarativeNetRequest.getDynamicRules();
+    console.log(`📊 Final rule count: ${finalRules.length}`);
     
+    // Log a sample of the final rules for debugging
+    if (finalRules.length > 0) {
+      console.log('📋 Sample rules:', finalRules.slice(0, 3).map(r => ({
+        id: r.id,
+        pattern: r.condition.urlFilter
+      })));
+    }
+
   } catch (error) {
-    console.error('Error updating rules:', error);
+    console.error('❌ Error updating blocking rules:', error);
+    throw error;
   }
 }
 
+// Enhanced pattern generation with better logging
 function generateBlockingPatterns(site) {
   const patterns = [];
   
   // Clean up the site input
-  const cleanSite = site.toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '');
+  let cleanSite = site.toLowerCase().trim();
+  const originalSite = cleanSite;
   
-  // If it looks like a domain (has a dot and valid TLD)
+  cleanSite = cleanSite.replace(/^https?:\/\//, '');
+  cleanSite = cleanSite.replace(/^www\./, '');
+  cleanSite = cleanSite.replace(/\/$/, '');
+  
+  console.log(`🧹 Cleaned site: "${originalSite}" → "${cleanSite}"`);
+  
+  if (!cleanSite) {
+    console.warn('⚠️  Empty site after cleaning:', site);
+    return patterns;
+  }
+  
+  // If it looks like a domain (contains a dot and valid TLD)
   if (cleanSite.includes('.') && /\.[a-z]{2,}$/i.test(cleanSite)) {
-    // Exact domain patterns
+    // Main domain patterns
     patterns.push(`*://${cleanSite}/*`);
     patterns.push(`*://www.${cleanSite}/*`);
     
-    // Subdomain patterns
-    patterns.push(`*://*.${cleanSite}/*`);
+    // Subdomain patterns (but be careful not to be too broad)
+    if (!cleanSite.startsWith('*.')) {
+      patterns.push(`*://*.${cleanSite}/*`);
+    }
   } else {
-    // Keyword-based blocking - be more specific to avoid false positives
-    patterns.push(`*://*${cleanSite}*`);
+    // For keywords, be more specific to avoid false positives
+    patterns.push(`*://*${cleanSite}*/*`);
   }
   
   return patterns;
 }
 
-// Passcode functionality
+// Debug function to check extension state
+async function debugExtensionState() {
+  const storage = await chrome.storage.sync.get(['blocked', 'customBlocked', 'blockingActive']);
+  const rules = await chrome.declarativeNetRequest.getDynamicRules();
+  
+  return {
+    storage,
+    rulesCount: rules.length,
+    sampleRules: rules.slice(0, 5).map(r => ({ id: r.id, pattern: r.condition.urlFilter }))
+  };
+}
+
+// Listen for storage changes and update rules accordingly
+chrome.storage.onChanged.addListener((changes, namespace) => {
+  if (namespace === 'sync') {
+    console.log('📦 Storage changed:', changes);
+    
+    if (changes.blocked || changes.customBlocked || changes.blockingActive) {
+      console.log('🔄 Blocking-related storage changed, updating rules...');
+      loadAndUpdateRules();
+    }
+  }
+});
+
+// Passcode functionality (simplified, no send-email.html)
 async function generateAndSendPasscode() {
   const passcode = generatePasscode();
   const expiryTime = Date.now() + (10 * 60 * 1000); // 10 minutes
 
-  return new Promise((resolve, reject) => {
-    chrome.storage.sync.get(['protectionEmail', 'emailjsConfig'], (data) => {
-      if (!data.protectionEmail) {
-        reject(new Error('No email configured for protection'));
-        return;
-      }
+  const data = await chrome.storage.sync.get(['protectionEmail', 'emailjsConfig']);
+  if (!data.protectionEmail) throw new Error('No email configured for protection');
+  const { serviceId, templateId, publicKey } = data.emailjsConfig || {};
+  if (!serviceId || !templateId || !publicKey) {
+    throw new Error('EmailJS not configured properly');
+  }
 
-      if (!data.emailjsConfig || !data.emailjsConfig.serviceId || !data.emailjsConfig.templateId || !data.emailjsConfig.publicKey) {
-        reject(new Error('EmailJS not configured properly'));
-        return;
-      }
-
-      // Store the passcode with expiry
-      chrome.storage.sync.set({
-        currentPasscode: {
-          code: passcode,
-          expires: expiryTime
-        }
-      });
-
-      // Create a tab to send the email (since service workers can't use EmailJS directly)
-      chrome.tabs.create({
-        url: chrome.runtime.getURL('send-email.html') + 
-             `?passcode=${passcode}&email=${encodeURIComponent(data.protectionEmail)}`,
-        active: false
-      }, (tab) => {
-        // Close the tab after 3 seconds
-        setTimeout(() => {
-          chrome.tabs.remove(tab.id).catch(() => {
-            // Tab might already be closed, ignore error
-          });
-          resolve();
-        }, 3000);
-      });
-    });
+  // Store passcode
+  await chrome.storage.sync.set({
+    currentPasscode: { code: passcode, expires: expiryTime }
   });
+
+  // EmailJS request body
+  const templateParams = {
+    to_email: data.protectionEmail,
+    subject: 'Focus Blocker - Unblock Passcode',
+    passcode,
+    message: `Hello!\n\nYour Focus Blocker passcode is: ${passcode}\n\nThis passcode will expire in 10 minutes.\n\nUse this code to modify your blocked sites list.\n\nStay productive!\nFocus Blocker Extension`
+  };
+
+  const requestBody = {
+    service_id: serviceId,
+    template_id: templateId,
+    user_id: publicKey,
+    template_params: templateParams
+  };
+
+  console.log("📧 Sending passcode email via EmailJS...", requestBody);
+
+  const response = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(requestBody)
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("❌ EmailJS error:", errorText);
+    throw new Error(`EmailJS failed: ${response.status} ${errorText}`);
+  }
+
+  console.log("✅ Passcode email sent successfully");
+  return true;
 }
 
 function generatePasscode() {

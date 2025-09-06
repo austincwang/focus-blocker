@@ -1,306 +1,314 @@
 <!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="stylesheet" href="./popup.css" />
-    <title>Focus Blocker</title>
-    <style>
-      body {
-        width: 350px;
-        padding: 15px;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      }
-      
-      .locked-overlay {
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(255, 255, 255, 0.95);
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        z-index: 1000;
-      }
-      
-      .locked-content {
-        text-align: center;
-        padding: 20px;
-      }
-      
-      .lock-icon {
-        font-size: 48px;
-        margin-bottom: 16px;
-      }
-      
-      .passcode-input {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-        margin-top: 20px;
-        align-items: center;
-      }
-      
-      .passcode-field {
-        display: flex;
-        gap: 8px;
-        align-items: center;
-      }
-      
-      #passcode-entry {
-        padding: 8px 12px;
-        border: 2px solid #ddd;
-        border-radius: 6px;
-        font-size: 16px;
-        font-family: monospace;
-        letter-spacing: 2px;
-        text-transform: uppercase;
-        width: 120px;
-        text-align: center;
-      }
-      
-      #passcode-entry:focus {
-        outline: none;
-        border-color: #1a73e8;
-      }
-      
-      .btn {
-        padding: 8px 16px;
-        border: none;
-        border-radius: 6px;
-        cursor: pointer;
-        font-size: 14px;
-        font-weight: 500;
-      }
-      
-      .btn-primary {
-        background: #1a73e8;
-        color: white;
-      }
-      
-      .btn-primary:hover {
-        background: #1557b0;
-      }
-      
-      .btn-secondary {
-        background: #f8f9fa;
-        color: #333;
-        border: 1px solid #dadce0;
-      }
-      
-      .btn-secondary:hover {
-        background: #f1f3f4;
-      }
-      
-      .btn-small {
-        padding: 6px 12px;
-        font-size: 12px;
-      }
-      
-      .section {
-        margin-bottom: 20px;
-        padding-bottom: 15px;
-        border-bottom: 1px solid #eee;
-      }
-      
-      .section:last-child {
-        border-bottom: none;
-      }
-      
-      h2 {
-        font-size: 16px;
-        margin-bottom: 10px;
-        color: #333;
-      }
-      
-      h3 {
-        font-size: 14px;
-        margin-bottom: 8px;
-        color: #666;
-      }
-      
-      label {
-        display: block;
-        margin-bottom: 8px;
-        font-size: 14px;
-      }
-      
-      .custom-input-container {
-        display: flex;
-        gap: 8px;
-        margin-bottom: 10px;
-      }
-      
-      #custom-site {
-        flex: 1;
-        padding: 6px 8px;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        font-size: 14px;
-      }
-      
-      #add-custom {
-        background: #4285f4;
-        color: white;
-        border: none;
-        padding: 6px 12px;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 14px;
-      }
-      
-      #add-custom:hover {
-        background: #3367d6;
-      }
-      
-      .custom-site-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        background: #f8f9fa;
-        padding: 6px 10px;
-        margin-bottom: 4px;
-        border-radius: 4px;
-        font-size: 13px;
-      }
-      
-      .remove-btn {
-        background: #ea4335;
-        color: white;
-        border: none;
-        width: 20px;
-        height: 20px;
-        border-radius: 50%;
-        cursor: pointer;
-        font-size: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-      
-      .remove-btn:hover {
-        background: #d33b2c;
-      }
-      
-      button[type="submit"] {
-        background: #34a853;
-        color: white;
-        border: none;
-        padding: 8px 16px;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 14px;
-        width: 100%;
-      }
-      
-      button[type="submit"]:hover {
-        background: #2d8e47;
-      }
-      
-      #status {
-        margin-top: 10px;
-        color: #34a853;
-        font-size: 13px;
-        text-align: center;
-      }
-      
-      .status.error {
-        color: #ea4335;
-      }
-      
-      .tip {
-        background: #e8f4fd;
-        padding: 8px;
-        border-radius: 4px;
-        font-size: 12px;
-        color: #1967d2;
-        margin-top: 8px;
-      }
-      
-      .settings-link {
-        text-align: center;
-        margin-top: 15px;
-        padding-top: 15px;
-        border-top: 1px solid #eee;
-      }
-      
-      .settings-link a {
-        color: #1a73e8;
-        text-decoration: none;
-        font-size: 12px;
-      }
-      
-      .settings-link a:hover {
-        text-decoration: underline;
-      }
-    </style>
-  </head>
-  <body>
-    <div id="locked-overlay" class="locked-overlay" style="display: none;">
-      <div class="locked-content">
-        <div class="lock-icon">🔒</div>
-        <h2>Enter Passcode to Modify Sites</h2>
-        <p style="color: #666; font-size: 14px; margin-bottom: 8px;">
-          Check your email for the passcode
-        </p>
-        <div class="passcode-input">
-          <div class="passcode-field">
-            <input type="text" id="passcode-entry" placeholder="XXXXXX" maxlength="6" />
-            <button class="btn btn-primary" id="verify-passcode">Unlock</button>
-          </div>
-          <div style="display: flex; gap: 8px;">
-            <button class="btn btn-secondary btn-small" id="request-passcode">Send New Code</button>
-            <button class="btn btn-secondary btn-small" id="cancel-unlock">Cancel</button>
-          </div>
-        </div>
-        <div id="passcode-status" style="margin-top: 12px; font-size: 13px;"></div>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body {
+      width: 350px;
+      padding: 15px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 0;
+    }
+
+    .setup-page, .blocked-page {
+      display: none;
+    }
+
+    .setup-page.active, .blocked-page.active {
+      display: block;
+    }
+
+    h1 {
+      color: #333;
+      margin: 0 0 15px 0;
+      font-size: 18px;
+      text-align: center;
+    }
+
+    .section {
+      margin-bottom: 20px;
+      padding: 15px;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      background: #fafafa;
+    }
+
+    .section h2 {
+      margin: 0 0 12px 0;
+      font-size: 14px;
+      color: #555;
+      font-weight: 600;
+    }
+
+    .section h3 {
+      margin: 0 0 10px 0;
+      font-size: 13px;
+      color: #666;
+      font-weight: 500;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 13px;
+      color: #333;
+      cursor: pointer;
+    }
+
+    label input[type="checkbox"] {
+      margin-right: 8px;
+    }
+
+    button {
+      background: #4CAF50;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    button:hover {
+      background: #45a049;
+    }
+
+    button[type="submit"] {
+      width: 100%;
+      margin-top: 10px;
+      padding: 10px;
+      font-size: 13px;
+    }
+
+    .custom-input-container {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .custom-input-container input {
+      flex: 1;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+
+    .custom-input-container button {
+      background: #2196F3;
+    }
+
+    .custom-input-container button:hover {
+      background: #1976D2;
+    }
+
+    .tip {
+      background: #e3f2fd;
+      padding: 10px;
+      border-radius: 4px;
+      font-size: 11px;
+      color: #1565c0;
+      line-height: 1.4;
+    }
+
+    .custom-site-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px;
+      background: white;
+      border: 1px solid #e0e0e0;
+      border-radius: 4px;
+      margin-bottom: 5px;
+      font-size: 12px;
+    }
+
+    .remove-btn {
+      background: #f44336;
+      color: white;
+      border: none;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+    }
+
+    .remove-btn:hover {
+      background: #d32f2f;
+    }
+
+    #status {
+      text-align: center;
+      margin: 10px 0;
+      font-size: 12px;
+      font-weight: 500;
+      min-height: 16px;
+      color: #4CAF50;
+    }
+
+    .settings-link {
+      text-align: center;
+      margin-top: 15px;
+    }
+
+    .settings-link a {
+      color: #666;
+      text-decoration: none;
+      font-size: 12px;
+    }
+
+    .settings-link a:hover {
+      color: #333;
+    }
+
+    .protection-indicator {
+      background: #e8f5e8;
+      color: #2d5a2d;
+      padding: 8px;
+      border-radius: 4px;
+      margin-bottom: 15px;
+      font-size: 12px;
+      text-align: center;
+      border: 1px solid #a3d4a3;
+    }
+
+    .blocked-status {
+      background: #ffebee;
+      border: 1px solid #ffcdd2;
+      padding: 15px;
+      border-radius: 8px;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .blocked-status h2 {
+      color: #d32f2f;
+      margin: 0 0 10px 0;
+      font-size: 16px;
+    }
+
+    .blocked-sites-list {
+      background: white;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 20px;
+    }
+
+    .blocked-sites-list h3 {
+      margin: 0 0 10px 0;
+      color: #333;
+      font-size: 13px;
+    }
+
+    .site-tag {
+      display: inline-block;
+      background: #f5f5f5;
+      padding: 4px 8px;
+      border-radius: 12px;
+      margin: 2px;
+      font-size: 11px;
+      color: #666;
+    }
+
+    .unlock-btn {
+      background: #ff9800;
+      width: 100%;
+      padding: 12px;
+      font-size: 14px;
+      margin-bottom: 10px;
+    }
+
+    .unlock-btn:hover {
+      background: #f57c00;
+    }
+
+    .disable-btn {
+      background: #f44336;
+      width: 100%;
+      padding: 12px;
+      font-size: 14px;
+    }
+
+    .disable-btn:hover {
+      background: #d32f2f;
+    }
+  </style>
+</head>
+<body>
+  <!-- Setup Page (Before Blocking) -->
+  <div id="setup-page" class="setup-page active">
+    <h1>🚫 Focus Blocker</h1>
+    
+    <div class="section">
+      <h2>Quick Block - Popular Sites</h2>
+      <form id="block-form">
+        <label><input type="checkbox" value="youtube.com" /> YouTube</label>
+        <label><input type="checkbox" value="netflix.com" /> Netflix</label>
+        <label><input type="checkbox" value="discord.com" /> Discord</label>
+        <label><input type="checkbox" value="instagram.com" /> Instagram</label>
+        <label><input type="checkbox" value="twitter.com" /> Twitter/X</label>
+        <label><input type="checkbox" value="reddit.com" /> Reddit</label>
+        <label><input type="checkbox" value="facebook.com" /> Facebook</label>
+        <label><input type="checkbox" value="tiktok.com" /> TikTok</label>
+        <button type="submit">Activate Blocking</button>
+      </form>
+    </div>
+
+    <div class="section">
+      <h3>Add Custom Site/Keyword</h3>
+      <div class="custom-input-container">
+        <input type="text" id="custom-site" placeholder="e.g., facebook, tiktok, news, etc." />
+        <button id="add-custom">Add</button>
+      </div>
+      <div class="tip">
+        💡 <strong>Tip:</strong> You can add:
+        <br>• Full domains: <em>facebook.com</em>
+        <br>• Keywords: <em>tiktok</em> (blocks any URL with "tiktok")
+        <br>• Subdomains: <em>m.youtube.com</em>
       </div>
     </div>
 
-    <div id="main-content">
-      <div class="section">
-        <h2>Quick Block - Popular Sites</h2>
-        <form id="block-form">
-          <label><input type="checkbox" value="youtube.com" /> YouTube</label>
-          <label><input type="checkbox" value="netflix.com" /> Netflix</label>
-          <label><input type="checkbox" value="discord.com" /> Discord</label>
-          <label><input type="checkbox" value="instagram.com" /> Instagram</label>
-          <label><input type="checkbox" value="twitter.com" /> Twitter/X</label>
-          <label><input type="checkbox" value="reddit.com" /> Reddit</label>
-          <button type="submit">Save Popular Sites</button>
-        </form>
-      </div>
-
-      <div class="section">
-        <h3>Add Custom Site/Keyword</h3>
-        <div class="custom-input-container">
-          <input type="text" id="custom-site" placeholder="e.g., facebook, tiktok, news, etc." />
-          <button id="add-custom">Add</button>
-        </div>
-        <div class="tip">
-          💡 <strong>Tip:</strong> You can add:
-          <br>• Full domains: <em>facebook.com</em>
-          <br>• Keywords: <em>tiktok</em> (blocks any URL with "tiktok")
-          <br>• Subdomains: <em>m.youtube.com</em>
-        </div>
-      </div>
-
-      <div class="section">
-        <h3>Your Custom Blocks</h3>
-        <div id="custom-list"></div>
-      </div>
-
-      <div id="status"></div>
-
-      <div class="settings-link">
-        <a href="#" id="settings-link">⚙️ Setup Email Protection</a>
-      </div>
+    <div class="section">
+      <h3>Your Custom Blocks</h3>
+      <div id="custom-list"></div>
     </div>
 
-    <script src="./popup.js"></script>
-  </body>
+    <div class="settings-link">
+      <a href="#" id="settings-link">⚙️ Setup Email Protection</a>
+    </div>
+  </div>
+
+  <!-- Blocked Page (After Blocking Active) -->
+  <div id="blocked-page" class="blocked-page">
+    <h1>🔒 Focus Mode Active</h1>
+    
+    <div class="blocked-status">
+      <h2>Blocking is Active</h2>
+      <p>Your selected sites are now blocked. Stay focused!</p>
+    </div>
+
+    <div class="blocked-sites-list">
+      <h3>Currently Blocked Sites:</h3>`
+      <div id="active-blocks"></div>
+    </div>
+
+    <button id="unlock-btn" class="unlock-btn">🔓 Modify Blocked Sites</button>
+    <button id="disable-all-btn" class="disable-btn">❌ Disable All Blocking</button>
+    
+    <div class="settings-link">
+      <a href="#" id="settings-link-blocked">⚙️ Manage Email Protection</a>
+    </div>
+  </div>
+
+  <div id="status"></div>
+
+  <script src="./popup.js"></script>
+</body>
 </html>
