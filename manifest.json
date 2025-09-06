@@ -1,18 +1,31 @@
 {
-  "name": "Focus Blocker",
-  "description": "Choose which sites to block to stay focused.",
-  "version": "1.0",
   "manifest_version": 3,
-  "action": {
-    "default_popup": "popup.html",
-    "default_icon": "hello_extensions.png"
-  },
+  "name": "Focus Blocker",
+  "version": "1.0",
+  "description": "Block distracting websites to stay focused",
+  
   "permissions": [
     "storage",
-    "webRequest",
-    "webRequestBlocking"
+    "declarativeNetRequest"
   ],
+  
   "host_permissions": [
-    "https://developer.chrome.com/*"
+    "<all_urls>"
+  ],
+  
+  "background": {
+    "service_worker": "background.js"
+  },
+  
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Focus Blocker"
+  },
+  
+  "web_accessible_resources": [
+    {
+      "resources": ["blocked.html"],
+      "matches": ["<all_urls>"]
+    }
   ]
 }
